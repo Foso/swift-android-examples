@@ -41,39 +41,41 @@ let javaIncludePath = "\(javaHome)/include"
 #endif
 
 let package = Package(
-  name: "SwiftHashing",
+  name: "WeatherLibrary",
   platforms: [.macOS(.v15)],
   products: [
     .library(
-      name: "SwiftHashing",
+      name: "WeatherLibrary",
       type: .dynamic,
-      targets: ["SwiftHashing"]
+      targets: ["WeatherLibrary"]
     )
   ],
   dependencies: [
     .package(url: "https://github.com/swiftlang/swift-java", branch: "main"),
-    .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0"..<"4.0.0"),
+    .package(url: "https://github.com/apple/swift-openapi-generator", from: "1.6.0"),
+    .package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.7.0"),
+    .package(url: "https://github.com/apple/swift-openapi-urlsession", from: "1.0.0"),
+    .package(url: "https://github.com/swift-server/swift-openapi-async-http-client", from: "1.0.0"),
   ],
   targets: [
     .target(
-      name: "SwiftHashing",
-      dependencies: [
-        .product(name: "Crypto", package: "swift-crypto"),
-        .product(name: "SwiftJava", package: "swift-java"),
-        .product(name: "CSwiftJavaJNI", package: "swift-java"),
-        .product(name: "SwiftJavaRuntimeSupport", package: "swift-java"),
-      ],
-      swiftSettings: [
-        .swiftLanguageMode(.v5),
-        .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"], .when(platforms: [.macOS, .linux, .windows]))
-      ],
-      plugins: [
-        .plugin(name: "JExtractSwiftPlugin", package: "swift-java")
-      ]
-    ),
-    .testTarget(
-      name: "SwiftHashingTests",
-      dependencies: ["SwiftHashing"]
-    ),
+        name: "WeatherLibrary",
+        dependencies: [
+            .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+            .product(name: "OpenAPIURLSession", package: "swift-openapi-urlsession", condition: .when(platforms: [.macOS, .iOS])),
+            .product(name: "OpenAPIAsyncHTTPClient", package: "swift-openapi-async-http-client", condition: .when(platforms: [.android])),
+            .product(name: "SwiftJava", package: "swift-java"),
+            .product(name: "CSwiftJavaJNI", package: "swift-java"),
+            .product(name: "SwiftJavaRuntimeSupport", package: "swift-java"),
+        ],
+        swiftSettings: [
+          .swiftLanguageMode(.v5),
+          .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"], .when(platforms: [.macOS, .linux, .windows]))
+        ],
+        plugins: [
+            .plugin(name: "OpenAPIGenerator", package: "swift-openapi-generator"),
+            .plugin(name: "JExtractSwiftPlugin", package: "swift-java")
+        ]
+    )
   ]
 )
