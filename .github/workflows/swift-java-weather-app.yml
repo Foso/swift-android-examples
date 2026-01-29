@@ -1,0 +1,66 @@
+name: Build swift-java-weather-app
+
+on:
+  workflow_dispatch:
+    inputs:
+      gradleTask:
+        description: "Gradle task to run"
+        required: false
+        default: "assembleDebug"
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Swiftly
+        run: |
+          curl -fsSL https://swiftlang.github.io/swiftly/swiftly-install.sh | bash -s -- --yes
+          echo "$HOME/.swiftly/bin" >> "$GITHUB_PATH"
+          echo "SWIFTLY_PATH=$HOME/.swiftly/bin/swiftly" >> "$GITHUB_ENV"
+
+      - name: Install Swift toolchain
+        run: |
+          swiftly install main-snapshot-2025-12-17
+          swiftly use main-snapshot-2025-12-17
+
+      - name: Install Swift Android SDK
+        env:
+          SWIFT_SDK_URL: https://download.swift.org/development/android/swift-DEVELOPMENT-SNAPSHOT-2025-12-17-a/swift-DEVELOPMENT-SNAPSHOT-2025-12-17-a-android.artifactbundle.tar.gz
+        run: |
+          mkdir -p "$HOME/Library/org.swift.swiftpm/swift-sdks"
+          swift sdk install "$SWIFT_SDK_URL"
+          echo "SWIFT_SDK_PATH=$HOME/Library/org.swift.swiftpm/swift-sdks" >> "$GITHUB_ENV"
+
+      - name: Resolve Swift packages
+        working-directory: swift-java-weather-app/weather-lib
+        run: swift package resolve
+
+      - name: Publish swift-java artifacts to Maven Local
+        working-directory: swift-java-weather-app/weather-lib
+        run: ./.build/checkouts/swift-java/gradlew --project-dir .build/checkouts/swift-java :SwiftKitCore:publishToMavenLocal
+
+      - name: Build weather app
+        env:
+          SWIFT_SDK_PATH: ${{ env.SWIFT_SDK_PATH }}
+          SWIFTLY_PATH: ${{ env.SWIFTLY_PATH }}
+        run: ./gradlew :swift-java-weather-app-weather-app:${{ inputs.gradleTask || 'assembleDebug' }}
